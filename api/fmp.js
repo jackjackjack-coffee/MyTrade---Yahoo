@@ -75,7 +75,7 @@ export default async function handler(req, res) {
   Object.entries(CORS).forEach(([k, v]) => res.setHeader(k, v));
 
   const { action = '', ticker: rawTicker = '', period = '3m' } = req.query;
-  const ticker = rawTicker.toUpperCase().trim();
+  const ticker = rawTicker.toUpperCase().trim().replace(/\./g, '-');
 
   try {
     // ── 1. Connection test ──────────────────────────────────────────────────
@@ -137,7 +137,7 @@ export default async function handler(req, res) {
     const operatingCF = cf.totalCashFromOperatingActivities?.raw || 0;
     const capex       = Math.abs(cf.capitalExpenditures?.raw     || 0);
     const fcfRaw      = fd.freeCashflow?.raw ?? (operatingCF - capex);
-    const fcf         = Math.max(fcfRaw / 1e6, 0);
+    const fcf         = fcfRaw / 1e6;
 
     const totalDebt = fd.totalDebt?.raw || 0;
     const totalCash = fd.totalCash?.raw || 0;
