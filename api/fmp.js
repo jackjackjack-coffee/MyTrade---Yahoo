@@ -136,7 +136,8 @@ export default async function handler(req, res) {
 
     const operatingCF = cf.totalCashFromOperatingActivities?.raw || 0;
     const capex       = Math.abs(cf.capitalExpenditures?.raw     || 0);
-    const fcf         = Math.max((operatingCF - capex) / 1e6, 0);
+    const fcfRaw      = fd.freeCashflow?.raw ?? (operatingCF - capex);
+    const fcf         = Math.max(fcfRaw / 1e6, 0);
 
     const totalDebt = fd.totalDebt?.raw || 0;
     const totalCash = fd.totalCash?.raw || 0;
