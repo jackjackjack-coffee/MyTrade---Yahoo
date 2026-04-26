@@ -917,12 +917,16 @@ function updateApiStatuses() {
 async function fetchFmpData(ticker) {
   try {
     var r = await fetch('/fmp?ticker=' + encodeURIComponent(ticker));
-    if(!r.ok) return null;
-    var data = await r.json();
-    if(data.error) return null;
+    var data = await r.json().catch(function(){ return {}; });
+    if(!r.ok || data.error) {
+      console.warn('FMP proxy error:', data.error || ('HTTP ' + r.status));
+      if(typeof showToast === 'function') showToast(ticker + ': ' + (data.error || ('HTTP ' + r.status)), 'red');
+      return null;
+    }
     return data;
   } catch(e) {
     console.warn('FMP proxy fetch failed:', e);
+    if(typeof showToast === 'function') showToast(ticker + ': ' + e.message, 'red');
     return null;
   }
 }

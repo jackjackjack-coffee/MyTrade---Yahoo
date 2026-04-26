@@ -44,8 +44,27 @@ async function yahooFetch(ticker) {
       'Cookie': cookies,
     },
   });
-  if (!res.ok) throw new Error(`HTTP ${res.status} from Yahoo Finance`);
-  return res.json();
+  if (!res.ok) throw new Error(`quoteSummary HTTP ${res.status}`);
+  const json = await res.json();
+  if (json?.quoteSummary?.error) {
+    throw new Error(`quoteSummary error: ${json.quoteSummary.error.description || 'unknown'}`);
+  }
+  return json;
+}
+
+// Fallback: chart endpoint gives basic price + meta without strict crumb check
+async function yahooChartMeta(ticker) {
+  const period2 = Math.floor(Date.now() / 1000);
+  const period1 = period2 - 7 * 86400;
+  const url = `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&period1=${period1}&period2=${period2}`;
+  const res = await fetch(url, {
+    headers: { 'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36' },
+  });
+  if (!res.ok) throw new Error(`chart HTTP ${res.status}`);
+  const json = await res.json();
+  const meta = json?.chart?.result?.[0]?.meta;
+  if (!meta) throw new Error('chart endpoint: no meta data');
+  return meta;
 }
 
 async function yahooHistory(ticker, days) {
@@ -113,9 +132,36 @@ export default async function handler(req, res) {
     }
 
     console.log(`[MyTrade] Fetching ${ticker}...`);
-    const data = await yahooFetch(ticker);
-    const r = data?.quoteSummary?.result?.[0];
-    if (!r) return res.status(404).json({ error: 'Ticker not found' });
+    let data, r;
+    try {
+      data = await yahooFetch(ticker);
+      r = data?.quoteSummary?.result?.[0];
+    } catch (e) {
+      console.warn(`[MyTrade] quoteSummary failed for ${ticker}: ${e.message} — trying chart fallback`);
+    }
+
+    if (!r) {
+      // Fallback: at least return basic price from chart endpoint
+      try {
+        const meta = await yahooChartMeta(ticker);
+        const fallback = {
+          name: meta.longName || meta.shortName || ticker,
+          sector: '', industry: '',
+          price: meta.regularMarketPrice || 0,
+          eps: 0, div: 0, fcf: 0, shares: 0, debt: 0,
+          beta: 1.2, g1: 8, g2: 5,
+          tg: 2.5, wacc: 9, fcfm: 22,
+          perT: 25, perG: 10, evM: 15, evMg: 30,
+          grG: 8, grY: 4.5, ddmG: 0, ddmR: 8,
+          fromApi: true,
+          partial: true,
+          fetchedAt: Date.now(),
+        };
+        return res.status(200).json(fallback);
+      } catch (e2) {
+        return res.status(404).json({ error: `Ticker not found or Yahoo blocked: ${e2.message}` });
+      }
+    }
 
     const pr = r.price                                          || {};
     const ks = r.defaultKeyStatistics                          || {};
