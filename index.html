@@ -1186,7 +1186,17 @@ function calcAll() {
     if(gV>0) models.push({ id:'grah', val:Math.round(gV*100)/100 });
   }
 
-  if(!models.length) return;
+  if(!models.length) {
+    document.getElementById('results-main').style.display='none';
+    var emptyEl = document.getElementById('results-empty-state');
+    emptyEl.style.display='';
+    var reasons = [];
+    if(eps<=0) reasons.push('EPS is negative');
+    if(fcf<=0) reasons.push('FCF is negative');
+    if(div<=0) reasons.push('no dividend');
+    emptyEl.innerHTML = '<div style="text-align:center;padding:2rem"><div style="font-size:18px;color:var(--text);margin-bottom:8px">Cannot calculate fair value</div><div style="color:var(--text2);font-size:14px">'+(reasons.length?reasons.join(', ')+' — adjust inputs manually or try a different stock':'No valuation models qualify')+'</div></div>';
+    return;
+  }
 
   var totalW=models.reduce(function(s,m){ return s+MODEL_INFO[m.id].w; },0);
   var combo=models.reduce(function(s,m){ return s+m.val*MODEL_INFO[m.id].w; },0)/totalW;
