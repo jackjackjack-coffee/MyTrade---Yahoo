@@ -1,4 +1,6 @@
 {
+  "buildCommand": "",
+  "outputDirectory": ".",
   "rewrites": [
     { "source": "/fmp", "destination": "/api/fmp" },
     { "source": "/fmp/(.*)", "destination": "/api/fmp" }
